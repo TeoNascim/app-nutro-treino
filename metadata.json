@@ -1,0 +1,7 @@
+{
+  "name": "FitTrack Pro - Dieta e Treino",
+  "description": "Aplicativo mobile-first para acompanhamento completo de evolução física, plano alimentar e rotina de treinamentos.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
