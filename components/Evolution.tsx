@@ -1,24 +1,55 @@
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 import { WeightEntry, LoadEntry } from '../types';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { Scale, Activity } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { Scale, Activity, Loader2 } from 'lucide-react';
 
 interface Props {
+  alunoId: string;
   weights: WeightEntry[];
-  loads: LoadEntry[];
-  setWeights: React.Dispatch<React.SetStateAction<WeightEntry[]>>;
-  userId: string;
   isPro: boolean;
 }
 
-const Evolution: React.FC<Props> = ({ weights, loads }) => {
+const Evolution: React.FC<Props> = ({ alunoId, weights }) => {
+  const [loads, setLoads] = useState<LoadEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (alunoId) fetchLoads();
+  }, [alunoId]);
+
+  const fetchLoads = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('registros_carga')
+        .select('*, exercicios(nome)')
+        .eq('aluno_id', alunoId)
+        .order('date', { ascending: true });
+
+      if (error) throw error;
+      if (data) {
+        setLoads(data.map((item: any) => ({
+          ...item,
+          exerciseName: item.exercicios?.nome || 'Exercício'
+        })));
+      }
+    } catch (err: any) {
+      console.error("Erro ao carregar histórico de cargas:", err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const weightData = useMemo(() => weights.map(w => ({
     data: new Date(w.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
-    peso: w.weight
+    peso: w.peso
   })), [weights]);
 
-  const exercises = useMemo(() => Array.from(new Set(loads.map(l => l.exerciseName))), [loads]);
+  const exerciseNames = useMemo(() => Array.from(new Set(loads.map(l => l.exerciseName))), [loads]);
+
+  if (loading) return <div className="flex justify-center p-20"><Loader2 className="animate-spin text-emerald-500" size={40} /></div>;
 
   return (
     <div className="space-y-10 pb-10">
@@ -29,17 +60,21 @@ const Evolution: React.FC<Props> = ({ weights, loads }) => {
         <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
           <Scale className="text-emerald-500" /> Histórico de Peso Corporal
         </h3>
-        <div className="h-[300px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={weightData}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-              <XAxis dataKey="data" axisLine={false} tickLine={false} style={{ fontSize: '10px', fontWeight: 'bold' }} />
-              <YAxis domain={['dataMin - 2', 'dataMax + 2']} hide />
-              <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }} />
-              <Line type="monotone" dataKey="peso" stroke="#10b981" strokeWidth={4} dot={{ r: 6, fill: '#10b981' }} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
+        {weightData.length > 0 ? (
+          <div className="h-[300px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={weightData}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="data" axisLine={false} tickLine={false} style={{ fontSize: '10px', fontWeight: 'bold' }} />
+                <YAxis domain={['dataMin - 2', 'dataMax + 2']} hide />
+                <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }} />
+                <Line type="monotone" dataKey="peso" stroke="#10b981" strokeWidth={4} dot={{ r: 6, fill: '#10b981' }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        ) : (
+          <div className="p-10 text-center text-slate-400">Nenhum registro de peso encontrado.</div>
+        )}
       </div>
 
       {/* Evolução de Carga */}
@@ -47,19 +82,19 @@ const Evolution: React.FC<Props> = ({ weights, loads }) => {
         <h3 className="text-lg font-bold text-slate-800 px-4 flex items-center gap-2">
           <Activity className="text-blue-500" /> Progressão de Cargas
         </h3>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {exercises.length === 0 ? (
+          {exerciseNames.length === 0 ? (
             <div className="bg-white p-12 rounded-[2rem] text-center border-2 border-dashed border-slate-100 text-slate-400 col-span-full">
               Nenhum registro de carga ainda. Registre durante o treino!
             </div>
           ) : (
-            exercises.map(exName => {
+            exerciseNames.map(exName => {
               const exData = loads
                 .filter(l => l.exerciseName === exName)
                 .map(l => ({
                   data: new Date(l.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
-                  carga: l.load
+                  carga: l.carga
                 }));
 
               return (

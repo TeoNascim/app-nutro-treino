@@ -13,7 +13,7 @@ export interface UserProfile {
   created_at?: string;
 }
 
-// Aliases for compatibility with older component code
+// Aliases for compatibility
 export type User = UserProfile;
 
 export interface AlunoAssociation {
@@ -26,7 +26,7 @@ export interface AlunoAssociation {
 export interface WeightEntry {
   id: string;
   aluno_id: string;
-  date: string;
+  date: string; // ISO date string
   peso: number;
 }
 
@@ -43,8 +43,9 @@ export interface LoadEntry {
   id: string;
   aluno_id: string;
   exercicio_id: string;
-  date: string;
+  date: string; // ISO date string
   carga: number;
+  exerciseName?: string; // Optional for UI display
 }
 
 export interface WorkoutPlan {

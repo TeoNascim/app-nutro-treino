@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { UserProfile } from '../types';
-import { UserPlus, ChevronRight, Award, Trash2 } from 'lucide-react';
+import { UserPlus, ChevronRight, Award, Trash2, Loader2 } from 'lucide-react';
 
 interface Props {
   profissionalId: string;
@@ -15,22 +15,31 @@ const UserManagement: React.FC<Props> = ({ profissionalId, selectedAlunoId, onSe
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchAlunos();
+    if (profissionalId) fetchAlunos();
   }, [profissionalId]);
 
   const fetchAlunos = async () => {
     setLoading(true);
-    // Buscar associações na tabela 'alunos' e dar join no profile
-    const { data, error } = await supabase
-      .from('alunos')
-      .select('user_id, users_profile (*)')
-      .eq('profissional_id', profissionalId);
+    try {
+      // Buscar associações na tabela 'alunos' e dar join no profile
+      const { data, error } = await supabase
+        .from('alunos')
+        .select('user_id, users_profile (*)')
+        .eq('profissional_id', profissionalId);
 
-    if (data) {
-      setAlunos(data.map((item: any) => item.users_profile));
+      if (error) throw error;
+
+      if (data) {
+        setAlunos(data.map((item: any) => item.users_profile));
+      }
+    } catch (err: any) {
+      console.error("Erro ao carregar alunos:", err.message);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
+
+  if (loading) return <div className="flex justify-center p-20"><Loader2 className="animate-spin text-emerald-500" size={40} /></div>;
 
   return (
     <div className="space-y-6">
@@ -48,11 +57,21 @@ const UserManagement: React.FC<Props> = ({ profissionalId, selectedAlunoId, onSe
               <div className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400">
                 <Award size={24} />
               </div>
-              <button className="text-slate-300 hover:text-red-500"><Trash2 size={20} /></button>
+              <button
+                onClick={async () => {
+                  if (confirm(`Remover aluno ${aluno.nome}?`)) {
+                    await supabase.from('alunos').delete().eq('user_id', aluno.id).eq('profissional_id', profissionalId);
+                    setAlunos(alunos.filter(a => a.id !== aluno.id));
+                  }
+                }}
+                className="text-slate-300 hover:text-red-500"
+              >
+                <Trash2 size={20} />
+              </button>
             </div>
             <h4 className="font-black text-slate-800 text-lg mb-1">{aluno.nome}</h4>
             <p className="text-xs text-slate-400 mb-6">{aluno.email}</p>
-            <button 
+            <button
               onClick={() => onSelect(aluno.id)}
               className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase flex items-center justify-center gap-2"
             >
@@ -60,6 +79,12 @@ const UserManagement: React.FC<Props> = ({ profissionalId, selectedAlunoId, onSe
             </button>
           </div>
         ))}
+
+        {!loading && alunos.length === 0 && (
+          <div className="col-span-full bg-white p-12 rounded-[2rem] text-center border-2 border-dashed border-slate-100 text-slate-400">
+            Nenhum aluno vinculado.
+          </div>
+        )}
       </div>
     </div>
   );

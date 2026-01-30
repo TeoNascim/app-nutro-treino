@@ -1,22 +1,22 @@
 
 import React, { useState, useEffect } from 'react';
-import { 
-  Home, 
-  Dumbbell, 
-  Utensils, 
-  TrendingUp, 
+import {
+  Home,
+  Dumbbell,
+  Utensils,
+  TrendingUp,
   LogOut,
   Users as UsersIcon,
   Printer
 } from 'lucide-react';
 import { supabase } from './lib/supabase';
-import { 
-  UserProfile, 
-  TabType, 
-  WeightEntry, 
-  WorkoutPlan, 
-  Meal, 
-  LoadEntry 
+import {
+  UserProfile,
+  TabType,
+  WeightEntry,
+  WorkoutPlan,
+  Meal,
+  LoadEntry
 } from './types';
 import Dashboard from './components/Dashboard';
 import Training from './components/Training';
@@ -24,7 +24,6 @@ import Diet from './components/Diet';
 import Evolution from './components/Evolution';
 import Auth from './components/Auth';
 import UserManagement from './components/UserManagement';
-import PrintReport from './components/PrintReport';
 
 const App: React.FC = () => {
   const [session, setSession] = useState<any>(null);
@@ -32,32 +31,66 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
   const [selectedAlunoId, setSelectedAlunoId] = useState<string | null>(null);
   const [isWorkoutActive, setIsWorkoutActive] = useState(false);
+  const [weights, setWeights] = useState<WeightEntry[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // Monitorar estado da sessão
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      if (session) fetchProfile(session.user.id);
+      if (session) {
+        fetchProfile(session.user.id);
+      } else {
+        setLoading(false);
+      }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
-      if (session) fetchProfile(session.user.id);
-      else setUserProfile(null);
+      if (session) {
+        fetchProfile(session.user.id);
+      } else {
+        setUserProfile(null);
+        setWeights([]);
+        setLoading(false);
+      }
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
   const fetchProfile = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('users_profile')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (data) {
+        setUserProfile(data);
+        if (data.role === 'aluno') {
+          fetchWeights(userId);
+        }
+      } else if (error) {
+        console.error("Erro ao buscar perfil:", error);
+      }
+    } catch (err) {
+      console.error("Erro inesperado ao buscar perfil:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchWeights = async (alunoId: string) => {
     const { data, error } = await supabase
-      .from('users_profile')
+      .from('registros_peso')
       .select('*')
-      .eq('id', userId)
-      .single();
-    
-    if (data) setUserProfile(data);
-    else if (error) console.error("Erro ao buscar perfil:", error);
+      .eq('aluno_id', alunoId)
+      .order('date', { ascending: true });
+
+    if (data) setWeights(data);
+    else if (error) console.error("Erro ao buscar pesos:", error);
   };
 
   const handleLogout = async () => {
@@ -66,10 +99,13 @@ const App: React.FC = () => {
     }
   };
 
+  if (loading) return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
   if (!session || !userProfile) return <Auth />;
 
   const isPro = userProfile.role === 'profissional';
-  
+  // ID do aluno que estamos visualizando no momento
+  const effectiveAlunoId = isPro ? selectedAlunoId : userProfile.id;
+
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 md:flex-row max-w-[1400px] mx-auto shadow-2xl relative">
       {/* Desktop Sidebar */}
@@ -78,22 +114,22 @@ const App: React.FC = () => {
           <TrendingUp size={32} />
           <h1 className="text-xl font-bold tracking-tight">FitTrack Pro</h1>
         </div>
-        
+
         <nav className="flex-1 space-y-2">
           <SidebarItem active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} icon={<Home />} label="Dashboard" />
           {isPro && <SidebarItem active={activeTab === 'users'} onClick={() => setActiveTab('users')} icon={<UsersIcon />} label="Meus Alunos" />}
           <SidebarItem active={activeTab === 'training'} onClick={() => setActiveTab('training')} icon={<Dumbbell />} label="Treinamento" badge={isWorkoutActive} />
           <SidebarItem active={activeTab === 'diet'} onClick={() => setActiveTab('diet')} icon={<Utensils />} label="Alimentação" />
           <SidebarItem active={activeTab === 'evolution'} onClick={() => setActiveTab('evolution')} icon={<TrendingUp />} label="Evolução" />
-          {isPro && selectedAlunoId && <SidebarItem active={activeTab === 'print'} onClick={() => setActiveTab('print')} icon={<Printer />} label="Gerar Relatório" />}
         </nav>
 
         <div className="mt-auto border-t border-slate-800 pt-6">
-           <div className="px-3 mb-4">
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Usuário</p>
-              <p className="text-sm font-bold text-slate-200 truncate">{userProfile.nome}</p>
-           </div>
-           <button onClick={handleLogout} className="w-full flex items-center gap-3 p-3 text-slate-400 hover:text-red-400 transition-colors">
+          <div className="px-3 mb-4">
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Usuário</p>
+            <p className="text-sm font-bold text-slate-200 truncate">{userProfile.nome}</p>
+            <p className="text-[10px] text-slate-400 capitalize">{userProfile.role}</p>
+          </div>
+          <button onClick={handleLogout} className="w-full flex items-center gap-3 p-3 text-slate-400 hover:text-red-400 transition-colors">
             <LogOut size={20} /> <span>Sair</span>
           </button>
         </div>
@@ -103,38 +139,41 @@ const App: React.FC = () => {
       <main className="flex-1 overflow-y-auto pb-24 md:pb-8 p-4 md:p-8">
         <div className="max-w-5xl mx-auto">
           {activeTab === 'dashboard' && (
-            <Dashboard 
-              profile={userProfile}
-              selectedAlunoId={selectedAlunoId}
+            <Dashboard
+              user={userProfile}
+              weights={weights}
               onTabChange={setActiveTab}
+              setWeights={setWeights}
               isWorkoutActive={isWorkoutActive}
             />
           )}
           {activeTab === 'users' && isPro && (
-            <UserManagement 
+            <UserManagement
               profissionalId={userProfile.id}
               selectedAlunoId={selectedAlunoId}
               onSelect={(id) => { setSelectedAlunoId(id); setActiveTab('dashboard'); }}
             />
           )}
           {activeTab === 'training' && (
-            <Training 
+            <Training
               userProfile={userProfile}
-              alunoId={isPro ? selectedAlunoId : userProfile.id}
+              alunoId={effectiveAlunoId}
               isPro={isPro}
               setIsWorkoutActive={setIsWorkoutActive}
               isWorkoutActive={isWorkoutActive}
             />
           )}
           {activeTab === 'diet' && (
-            <Diet 
-              alunoId={isPro ? selectedAlunoId : userProfile.id}
+            <Diet
+              userId={effectiveAlunoId || ''}
               isPro={isPro}
             />
           )}
           {activeTab === 'evolution' && (
-            <Evolution 
-              alunoId={isPro ? selectedAlunoId : userProfile.id}
+            <Evolution
+              alunoId={effectiveAlunoId || ''}
+              weights={weights}
+              isPro={isPro}
             />
           )}
         </div>
