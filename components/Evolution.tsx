@@ -26,7 +26,7 @@ const Evolution: React.FC<Props> = ({ alunoId, weights }) => {
         .from('registros_carga')
         .select('*, exercicios(nome)')
         .eq('aluno_id', alunoId)
-        .order('date', { ascending: true });
+        .order('created_at', { ascending: true });
 
       if (error) throw error;
       if (data) {
@@ -43,7 +43,7 @@ const Evolution: React.FC<Props> = ({ alunoId, weights }) => {
   };
 
   const weightData = useMemo(() => weights.map(w => ({
-    data: new Date(w.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+    data: new Date(w.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
     peso: w.peso
   })), [weights]);
 
@@ -93,7 +93,7 @@ const Evolution: React.FC<Props> = ({ alunoId, weights }) => {
               const exData = loads
                 .filter(l => l.exerciseName === exName)
                 .map(l => ({
-                  data: new Date(l.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+                  data: new Date(l.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
                   carga: l.carga
                 }));
 

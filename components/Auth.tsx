@@ -21,16 +21,48 @@ const Auth: React.FC = () => {
         });
         if (error) throw error;
       } else {
-        const { data, error } = await supabase.auth.signUp({
+        // Sign up com metadata (Camada A)
+        const { data, error: signUpError } = await supabase.auth.signUp({
           email: formData.email,
           password: formData.password,
+          options: {
+            data: {
+              role: role,
+              nome: formData.nome
+            }
+          }
         });
-        if (error) throw error;
 
-        if (data.user) {
-          await supabase.from('users_profile').insert([
-            { id: data.user.id, nome: formData.nome, email: formData.email, role: role }
-          ]);
+        if (signUpError) {
+          if (signUpError.status === 429) {
+            throw new Error("Muitas tentativas. Por favor, aguarde um momento antes de tentar novamente.");
+          }
+          throw signUpError;
+        }
+
+        if (!data.user) throw new Error("Erro ao criar usuário.");
+
+        // Criar ou atualizar perfil (Upsert - Camada A de segurança)
+        const { error: profileError } = await supabase.from('users_profile').upsert([
+          {
+            id: data.user.id,
+            nome: formData.nome,
+            email: formData.email,
+            role: role
+          }
+        ], { onConflict: 'id' });
+
+        if (profileError) {
+          console.error("Erro ao configurar perfil via frontend:", profileError);
+          // O usuário ainda pode logar se a trigger funcionar ou se tentar novamente
+          alert("Conta criada, mas houve um erro ao configurar o perfil. Tentaremos novamente no primeiro login.");
+        }
+
+        if (data.session) {
+          alert("Cadastro realizado com sucesso!");
+        } else {
+          alert("Verifique seu email para confirmar a conta antes de entrar.");
+          setIsLogin(true);
         }
       }
     } catch (error: any) {
@@ -62,27 +94,27 @@ const Auth: React.FC = () => {
           {!isLogin && (
             <div className="relative">
               <UserIcon className="absolute left-4 top-4 text-slate-300" size={18} />
-              <input 
+              <input
                 type="text" placeholder="Nome Completo" required
                 className="w-full pl-12 pr-4 py-4 bg-slate-50 rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none font-medium"
-                value={formData.nome} onChange={e => setFormData({...formData, nome: e.target.value})}
+                value={formData.nome} onChange={e => setFormData({ ...formData, nome: e.target.value })}
               />
             </div>
           )}
           <div className="relative">
             <Mail className="absolute left-4 top-4 text-slate-300" size={18} />
-            <input 
+            <input
               type="email" placeholder="Email" required
               className="w-full pl-12 pr-4 py-4 bg-slate-50 rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none font-medium"
-              value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})}
+              value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })}
             />
           </div>
           <div className="relative">
             <Lock className="absolute left-4 top-4 text-slate-300" size={18} />
-            <input 
+            <input
               type="password" placeholder="Senha" required
               className="w-full pl-12 pr-4 py-4 bg-slate-50 rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none font-medium"
-              value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})}
+              value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })}
             />
           </div>
 

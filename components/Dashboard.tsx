@@ -31,8 +31,7 @@ const Dashboard: React.FC<Props> = ({ user, weights, onTabChange, setWeights, is
         .from('registros_peso')
         .insert([{
           aluno_id: user.id,
-          peso: weightValue,
-          date: new Date().toISOString()
+          peso: weightValue
         }])
         .select();
 
@@ -162,32 +161,6 @@ const Dashboard: React.FC<Props> = ({ user, weights, onTabChange, setWeights, is
     </div>
   );
 };
-
-const StatCard = ({ label, value, sub, color, icon }: any) => (
-  <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 group hover:shadow-lg transition-all">
-    <div className="flex justify-between items-start mb-6">
-      <h3 className="text-slate-400 font-black uppercase text-[10px] tracking-widest">{label}</h3>
-      <div className={`text-${color}-500 opacity-50 group-hover:opacity-100 transition-opacity`}>{icon}</div>
-    </div>
-    <div className="text-4xl font-black text-slate-800 mb-1">{value}</div>
-    <div className="text-xs text-slate-400 font-bold uppercase tracking-tight">{sub}</div>
-  </div>
-);
-
-const SectionCard = ({ title, desc, icon, onClick }: any) => (
-  <button onClick={onClick} className="w-full bg-white p-8 rounded-[3rem] border-2 border-slate-50 shadow-sm flex items-center justify-between hover:border-emerald-200 transition-all group text-left">
-    <div className="flex items-center gap-6">
-      <div className="p-5 bg-slate-50 rounded-[1.5rem] group-hover:bg-emerald-50 group-hover:scale-110 transition-all">{icon}</div>
-      <div>
-        <h4 className="text-xl font-black text-slate-800 uppercase tracking-tight">{title}</h4>
-        <p className="text-sm text-slate-400 font-medium">{desc}</p>
-      </div>
-    </div>
-    <ChevronRight className="text-slate-300 group-hover:text-emerald-500 group-hover:translate-x-2 transition-all" />
-  </button>
-);
-
-export default Dashboard;
 
 const StatCard = ({ label, value, sub, color, icon }: any) => (
   <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 group hover:shadow-lg transition-all">

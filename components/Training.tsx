@@ -109,8 +109,7 @@ const Training: React.FC<Props> = ({ alunoId, isPro, isWorkoutActive, setIsWorko
       const { error } = await supabase.from('registros_carga').insert([{
         aluno_id: alunoId,
         exercicio_id: exerciseId,
-        carga: parseFloat(carga),
-        date: new Date().toISOString()
+        carga: parseFloat(carga)
       }]);
       if (error) throw error;
       alert("Carga registrada com sucesso!");

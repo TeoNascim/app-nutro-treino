@@ -26,7 +26,7 @@ export interface AlunoAssociation {
 export interface WeightEntry {
   id: string;
   aluno_id: string;
-  date: string; // ISO date string
+  created_at: string; // ISO date string
   peso: number;
 }
 
@@ -43,7 +43,7 @@ export interface LoadEntry {
   id: string;
   aluno_id: string;
   exercicio_id: string;
-  date: string; // ISO date string
+  created_at: string; // ISO date string
   carga: number;
   exerciseName?: string; // Optional for UI display
 }

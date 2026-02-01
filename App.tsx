@@ -1,3 +1,7 @@
+console.log("VITE_SUPABASE_URL:", import.meta.env.VITE_SUPABASE_URL)
+console.log("VITE_SUPABASE_ANON_KEY:", import.meta.env.VITE_SUPABASE_ANON_KEY?.slice(0, 10))
+
+
 
 import React, { useState, useEffect } from 'react';
 import {
@@ -72,8 +76,34 @@ const App: React.FC = () => {
         if (data.role === 'aluno') {
           fetchWeights(userId);
         }
-      } else if (error) {
-        console.error("Erro ao buscar perfil:", error);
+      } else {
+        // Fallback: Tentar criar o perfil a partir dos metadados da sessão (Camada A)
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session && session.user) {
+          const { role, nome } = session.user.user_metadata;
+          if (role) {
+            const { data: newProfile, error: insertError } = await supabase
+              .from('users_profile')
+              .upsert({
+                id: session.user.id,
+                email: session.user.email,
+                nome: nome || 'Usuário',
+                role: role
+              })
+              .select()
+              .single();
+
+            if (newProfile) {
+              setUserProfile(newProfile);
+              if (newProfile.role === 'aluno') fetchWeights(userId);
+              return;
+            }
+            if (insertError) console.error("Erro no fallback de perfil:", insertError);
+          }
+        }
+
+        if (error) console.error("Erro ao buscar perfil:", error);
+        setUserProfile(null);
       }
     } catch (err) {
       console.error("Erro inesperado ao buscar perfil:", err);
@@ -87,7 +117,7 @@ const App: React.FC = () => {
       .from('registros_peso')
       .select('*')
       .eq('aluno_id', alunoId)
-      .order('date', { ascending: true });
+      .order('created_at', { ascending: true });
 
     if (data) setWeights(data);
     else if (error) console.error("Erro ao buscar pesos:", error);
@@ -100,7 +130,21 @@ const App: React.FC = () => {
   };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
-  if (!session || !userProfile) return <Auth />;
+
+  if (!session) return <Auth />;
+
+  if (!userProfile) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-slate-50 text-center">
+        <div className="bg-white p-12 rounded-[3rem] shadow-2xl max-w-md">
+          <TrendingUp className="mx-auto mb-6 text-emerald-500" size={48} />
+          <h2 className="text-2xl font-black text-slate-800 mb-4">Perfil não encontrado</h2>
+          <p className="text-slate-500 mb-8 font-medium">Não conseguimos localizar seus dados de acesso. Isso pode acontecer se o cadastro não foi finalizado corretamente.</p>
+          <button onClick={handleLogout} className="w-full bg-slate-900 text-white font-black py-4 rounded-2xl uppercase tracking-widest text-xs">Voltar para Login</button>
+        </div>
+      </div>
+    );
+  }
 
   const isPro = userProfile.role === 'profissional';
   // ID do aluno que estamos visualizando no momento
