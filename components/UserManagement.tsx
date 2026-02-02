@@ -13,6 +13,9 @@ interface Props {
 const UserManagement: React.FC<Props> = ({ profissionalId, selectedAlunoId, onSelect }) => {
   const [alunos, setAlunos] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [alunoEmail, setAlunoEmail] = useState('');
+  const [linking, setLinking] = useState(false);
 
   useEffect(() => {
     if (profissionalId) fetchAlunos();
@@ -21,21 +24,61 @@ const UserManagement: React.FC<Props> = ({ profissionalId, selectedAlunoId, onSe
   const fetchAlunos = async () => {
     setLoading(true);
     try {
-      // Buscar associações na tabela 'alunos' e dar join no profile
       const { data, error } = await supabase
         .from('alunos')
         .select('user_id, users_profile (*)')
         .eq('profissional_id', profissionalId);
 
       if (error) throw error;
-
       if (data) {
-        setAlunos(data.map((item: any) => item.users_profile));
+        setAlunos(data.filter((item: any) => item.users_profile).map((item: any) => item.users_profile));
       }
     } catch (err: any) {
       console.error("Erro ao carregar alunos:", err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleLinkAluno = async () => {
+    if (!alunoEmail || linking) return;
+    setLinking(true);
+
+    try {
+      // 1. Buscar o aluno pelo email na tabela users_profile
+      const { data: profile, error: profileError } = await supabase
+        .from('users_profile')
+        .select('*')
+        .eq('email', alunoEmail)
+        .eq('role', 'aluno')
+        .single();
+
+      if (profileError || !profile) {
+        alert("Aluno não encontrado ou não possui perfil de aluno.");
+        setLinking(false);
+        return;
+      }
+
+      // 2. Vincular o profissional ao aluno na tabela 'alunos'
+      const { error: linkError } = await supabase
+        .from('alunos')
+        .upsert({
+          user_id: profile.id,
+          profissional_id: profissionalId,
+          nome: profile.nome,
+          email: profile.email
+        }, { onConflict: 'user_id' });
+
+      if (linkError) throw linkError;
+
+      alert("Aluno vinculado com sucesso!");
+      setShowAddModal(false);
+      setAlunoEmail('');
+      fetchAlunos();
+    } catch (err: any) {
+      alert("Erro ao vincular aluno: " + err.message);
+    } finally {
+      setLinking(false);
     }
   };
 
@@ -45,10 +88,34 @@ const UserManagement: React.FC<Props> = ({ profissionalId, selectedAlunoId, onSe
     <div className="space-y-6">
       <div className="flex justify-between items-center px-2">
         <h2 className="text-3xl font-black text-slate-900">Meus Alunos</h2>
-        <button className="bg-emerald-600 text-white p-3 rounded-2xl shadow-xl">
-          <UserPlus size={20} />
+        <button
+          onClick={() => setShowAddModal(true)}
+          className="bg-emerald-600 text-white p-3 rounded-2xl shadow-xl hover:bg-emerald-700 transition-all font-bold flex items-center gap-2 text-xs uppercase"
+        >
+          <UserPlus size={18} /> Vincular Aluno
         </button>
       </div>
+
+      {showAddModal && (
+        <div className="bg-slate-900/5 backdrop-blur-sm p-8 rounded-[2.5rem] border-2 border-emerald-100 animate-in zoom-in-95 duration-200">
+          <h3 className="font-black text-slate-800 mb-4 uppercase tracking-tight">Novo Vínculo</h3>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <input
+              type="email" placeholder="E-mail do aluno cadastrado"
+              className="flex-1 p-4 rounded-2xl border-none bg-white shadow-sm focus:ring-2 focus:ring-emerald-500 outline-none font-medium"
+              value={alunoEmail} onChange={e => setAlunoEmail(e.target.value)}
+            />
+            <button
+              onClick={handleLinkAluno}
+              disabled={linking}
+              className="bg-emerald-600 text-white font-black py-4 px-8 rounded-2xl shadow-lg disabled:opacity-50 uppercase tracking-widest text-xs"
+            >
+              {linking ? 'Vinculando...' : 'Confirmar'}
+            </button>
+            <button onClick={() => setShowAddModal(false)} className="py-4 px-4 font-bold text-slate-400 uppercase text-[10px]" disabled={linking}>Cancelar</button>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {alunos.map((aluno) => (

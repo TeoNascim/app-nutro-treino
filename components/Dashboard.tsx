@@ -43,7 +43,8 @@ const Dashboard: React.FC<Props> = ({ user, weights, onTabChange, setWeights, is
         setNewWeight('');
       }
     } catch (error: any) {
-      alert("Erro ao salvar peso: " + error.message);
+      console.error("Erro completo do Supabase ao salvar peso:", error);
+      alert("Erro ao salvar peso: " + (error.message || "Erro desconhecido"));
     } finally {
       setLoading(false);
     }
