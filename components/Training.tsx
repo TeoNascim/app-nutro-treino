@@ -107,7 +107,7 @@ const Training: React.FC<Props> = ({ alunoId, isPro, isWorkoutActive, setIsWorko
     if (isPro || !carga) return;
     try {
       const { error } = await supabase.from('registros_carga').insert([{
-        aluno_id: alunoId,
+        user_id: alunoId,
         exercicio_id: exerciseId,
         carga: parseFloat(carga)
       }]);

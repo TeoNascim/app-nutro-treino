@@ -25,7 +25,7 @@ const Evolution: React.FC<Props> = ({ alunoId, weights }) => {
       const { data, error } = await supabase
         .from('registros_carga')
         .select('*, exercicios(nome)')
-        .eq('aluno_id', alunoId)
+        .eq('user_id', alunoId)
         .order('created_at', { ascending: true });
 
       if (error) throw error;

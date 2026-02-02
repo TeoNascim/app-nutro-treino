@@ -18,42 +18,43 @@ export type User = UserProfile;
 
 export interface AlunoAssociation {
   id: string;
-  user_id: string;
+  aluno_id: string;
   profissional_id: string;
   created_at: string;
 }
 
 export interface WeightEntry {
   id: string;
-  aluno_id: string;
+  user_id: string;
   created_at: string; // ISO date string
   peso: number;
 }
 
 export interface Exercise {
   id: string;
-  plano_treino_id: string;
+  profissional_id: string;
   nome: string;
-  series: number;
-  repeticoes: number | string;
-  observacoes?: string;
+  grupo: string;
+  created_at: string;
 }
 
 export interface LoadEntry {
   id: string;
-  aluno_id: string;
+  user_id: string;
   exercicio_id: string;
   created_at: string; // ISO date string
   carga: number;
+  repeticoes?: number;
   exerciseName?: string; // Optional for UI display
 }
 
 export interface WorkoutPlan {
   id: string;
+  profissional_id: string;
   aluno_id: string;
-  tipo_treino: string;
-  dia_semana: string;
-  exercises?: Exercise[];
+  titulo: string;
+  descricao: string;
+  created_at: string;
 }
 
 export type DayWorkout = WorkoutPlan;
@@ -65,14 +66,14 @@ export interface UserWorkoutPlan {
 export interface Meal {
   id: string;
   aluno_id: string;
-  tipo_refeicao: MealType;
-  dia_semana: string;
-  horario: string;
+  titulo: string;
   descricao: string;
+  calorias: number;
+  created_at: string;
 }
 
 export interface DietPlan {
-  userId: string;
+  alunoId: string;
   meals: Meal[];
 }
 

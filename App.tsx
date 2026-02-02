@@ -77,29 +77,27 @@ const App: React.FC = () => {
           fetchWeights(userId);
         }
       } else {
-        // Fallback: Tentar criar o perfil a partir dos metadados da sessão (Camada A)
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session && session.user) {
-          const { role, nome } = session.user.user_metadata;
-          if (role) {
-            const { data: newProfile, error: insertError } = await supabase
-              .from('users_profile')
-              .upsert({
-                id: session.user.id,
-                email: session.user.email,
-                nome: nome || 'Usuário',
-                role: role
-              })
-              .select()
-              .single();
+        // Fallback: Tentar criar o perfil a partir dos metadados da sessão
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        if (currentSession && currentSession.user) {
+          const { role, nome } = currentSession.user.user_metadata;
+          const { data: newProfile, error: insertError } = await supabase
+            .from('users_profile')
+            .upsert({
+              id: currentSession.user.id,
+              email: currentSession.user.email,
+              nome: nome || 'Usuário',
+              role: role || 'aluno'
+            })
+            .select()
+            .single();
 
-            if (newProfile) {
-              setUserProfile(newProfile);
-              if (newProfile.role === 'aluno') fetchWeights(userId);
-              return;
-            }
-            if (insertError) console.error("Erro no fallback de perfil:", insertError);
+          if (newProfile) {
+            setUserProfile(newProfile);
+            if (newProfile.role === 'aluno') fetchWeights(userId);
+            return;
           }
+          if (insertError) console.error("Erro no fallback de perfil:", insertError);
         }
 
         if (error) console.error("Erro ao buscar perfil:", error);
@@ -112,11 +110,11 @@ const App: React.FC = () => {
     }
   };
 
-  const fetchWeights = async (alunoId: string) => {
+  const fetchWeights = async (userId: string) => {
     const { data, error } = await supabase
       .from('registros_peso')
       .select('*')
-      .eq('aluno_id', alunoId)
+      .eq('user_id', userId)
       .order('created_at', { ascending: true });
 
     if (data) setWeights(data);

@@ -26,7 +26,7 @@ const UserManagement: React.FC<Props> = ({ profissionalId, selectedAlunoId, onSe
     try {
       const { data, error } = await supabase
         .from('alunos')
-        .select('user_id, users_profile (*)')
+        .select('aluno_id, users_profile (*)')
         .eq('profissional_id', profissionalId);
 
       if (error) throw error;
@@ -45,7 +45,6 @@ const UserManagement: React.FC<Props> = ({ profissionalId, selectedAlunoId, onSe
     setLinking(true);
 
     try {
-      // 1. Buscar o aluno pelo email na tabela users_profile
       const { data: profile, error: profileError } = await supabase
         .from('users_profile')
         .select('*')
@@ -59,15 +58,12 @@ const UserManagement: React.FC<Props> = ({ profissionalId, selectedAlunoId, onSe
         return;
       }
 
-      // 2. Vincular o profissional ao aluno na tabela 'alunos'
       const { error: linkError } = await supabase
         .from('alunos')
         .upsert({
-          user_id: profile.id,
-          profissional_id: profissionalId,
-          nome: profile.nome,
-          email: profile.email
-        }, { onConflict: 'user_id' });
+          aluno_id: profile.id,
+          profissional_id: profissionalId
+        }, { onConflict: 'aluno_id' });
 
       if (linkError) throw linkError;
 
@@ -127,7 +123,7 @@ const UserManagement: React.FC<Props> = ({ profissionalId, selectedAlunoId, onSe
               <button
                 onClick={async () => {
                   if (confirm(`Remover aluno ${aluno.nome}?`)) {
-                    await supabase.from('alunos').delete().eq('user_id', aluno.id).eq('profissional_id', profissionalId);
+                    await supabase.from('alunos').delete().eq('aluno_id', aluno.id).eq('profissional_id', profissionalId);
                     setAlunos(alunos.filter(a => a.id !== aluno.id));
                   }
                 }}

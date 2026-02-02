@@ -21,7 +21,7 @@ const Auth: React.FC = () => {
         });
         if (error) throw error;
       } else {
-        // Sign up com metadata (Camada A)
+        // Sign up com metadata (Novo Backend - Trigger fará o resto)
         const { data, error: signUpError } = await supabase.auth.signUp({
           email: formData.email,
           password: formData.password,
@@ -42,7 +42,7 @@ const Auth: React.FC = () => {
 
         if (!data.user) throw new Error("Erro ao criar usuário.");
 
-        // Criar ou atualizar perfil (Upsert - Camada A de segurança)
+        // Fallback rápido via frontend (opcional mas seguro)
         const { error: profileError } = await supabase.from('users_profile').upsert([
           {
             id: data.user.id,
@@ -53,9 +53,7 @@ const Auth: React.FC = () => {
         ], { onConflict: 'id' });
 
         if (profileError) {
-          console.error("Erro ao configurar perfil via frontend:", profileError);
-          // O usuário ainda pode logar se a trigger funcionar ou se tentar novamente
-          alert("Conta criada, mas houve um erro ao configurar o perfil. Tentaremos novamente no primeiro login.");
+          console.warn("Trigger de perfil pode estar atrasada ou falhou, fallback frontend:", profileError);
         }
 
         if (data.session) {

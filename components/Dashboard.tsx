@@ -30,7 +30,7 @@ const Dashboard: React.FC<Props> = ({ user, weights, onTabChange, setWeights, is
       const { data, error } = await supabase
         .from('registros_peso')
         .insert([{
-          aluno_id: user.id,
+          user_id: user.id,
           peso: weightValue
         }])
         .select();
