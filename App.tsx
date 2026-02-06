@@ -81,26 +81,38 @@ const App: React.FC = () => {
         const { data: { session: currentSession } } = await supabase.auth.getSession();
         if (currentSession && currentSession.user) {
           const { role, nome } = currentSession.user.user_metadata;
-          const { data: newProfile, error: insertError } = await supabase
+          // Upsert sem select() encadeado para evitar problemas de RLS/filtro no retorno
+          const { error: upsertError } = await supabase
             .from('users_profile')
             .upsert({
               id: currentSession.user.id,
               email: currentSession.user.email,
               nome: nome || 'Usuário',
               role: role || 'aluno'
-            })
-            .select()
-            .single();
+            }, { onConflict: 'id' });
 
-          if (newProfile) {
-            setUserProfile(newProfile);
-            if (newProfile.role === 'aluno') fetchWeights(userId);
-            return;
+          if (!upsertError) {
+            // Nova busca filtrada explicitamente após o upsert
+            const { data: refreshedProfile, error: fetchAfterError } = await supabase
+              .from('users_profile')
+              .select('*')
+              .eq('id', currentSession.user.id)
+              .single();
+
+            if (refreshedProfile) {
+              setUserProfile(refreshedProfile);
+              if (refreshedProfile.role === 'aluno') fetchWeights(userId);
+              return;
+            }
+            if (fetchAfterError) console.error("Erro ao buscar perfil após upsert:", fetchAfterError);
+          } else {
+            console.error("Erro no upsert de perfil:", upsertError);
           }
-          if (insertError) console.error("Erro no fallback de perfil:", insertError);
         }
 
-        if (error) console.error("Erro ao buscar perfil:", error);
+        if (error && error.code !== 'PGRST116') {
+          console.error("Erro ao buscar perfil:", error);
+        }
         setUserProfile(null);
       }
     } catch (err) {

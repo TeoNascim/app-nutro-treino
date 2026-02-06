@@ -53,6 +53,9 @@ const UserManagement: React.FC<Props> = ({ profissionalId, selectedAlunoId, onSe
         .single();
 
       if (profileError || !profile) {
+        if (profileError && profileError.code !== 'PGRST116') {
+          console.error("Erro ao buscar aluno:", profileError);
+        }
         alert("Aluno não encontrado ou não possui perfil de aluno.");
         setLinking(false);
         return;
