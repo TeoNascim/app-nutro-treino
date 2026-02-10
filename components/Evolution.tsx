@@ -11,7 +11,7 @@ interface Props {
   isPro: boolean;
 }
 
-const Evolution: React.FC<Props> = ({ alunoId, weights }) => {
+const Evolution: React.FC<Props> = ({ alunoId, weights, isPro }) => {
   const [loads, setLoads] = useState<LoadEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -43,17 +43,42 @@ const Evolution: React.FC<Props> = ({ alunoId, weights }) => {
   };
 
   const weightData = useMemo(() => weights.map(w => ({
+    timestamp: new Date(w.created_at).getTime(),
     data: new Date(w.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
     peso: w.peso
-  })), [weights]);
+  })).sort((a, b) => a.timestamp - b.timestamp), [weights]);
 
   const exerciseNames = useMemo(() => Array.from(new Set(loads.map(l => l.exerciseName))), [loads]);
 
   if (loading) return <div className="flex justify-center p-20"><Loader2 className="animate-spin text-emerald-500" size={40} /></div>;
 
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      const dateLabel = new Date(label).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+      return (
+        <div className="bg-white p-4 rounded-2xl shadow-2xl border border-slate-50">
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{dateLabel}</p>
+          <p className="text-lg font-black text-slate-800">{payload[0].value} <span className="text-xs text-slate-400 font-bold">kg</span></p>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  const formatDate = (tick: number) => {
+    return new Date(tick).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+  };
+
   return (
     <div className="space-y-10 pb-10">
-      <h2 className="text-3xl font-black text-slate-900 px-2">Evolução</h2>
+      <div className="flex items-center justify-between px-2">
+        <h2 className="text-3xl font-black text-slate-900">Evolução</h2>
+        {isPro && (
+          <span className="bg-emerald-500/10 text-emerald-600 text-[10px] font-black uppercase tracking-[0.2em] px-4 py-2 rounded-full border border-emerald-500/10">
+            Visualizando Aluno
+          </span>
+        )}
+      </div>
 
       {/* Peso Corporal */}
       <div className="bg-white p-8 rounded-[3rem] shadow-sm border border-slate-100">
@@ -65,10 +90,23 @@ const Evolution: React.FC<Props> = ({ alunoId, weights }) => {
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={weightData}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="data" axisLine={false} tickLine={false} style={{ fontSize: '10px', fontWeight: 'bold' }} />
+                <XAxis
+                  dataKey="timestamp"
+                  axisLine={false}
+                  tickLine={false}
+                  tickFormatter={formatDate}
+                  style={{ fontSize: '10px', fontWeight: 'bold' }}
+                />
                 <YAxis domain={['dataMin - 2', 'dataMax + 2']} hide />
-                <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }} />
-                <Line type="monotone" dataKey="peso" stroke="#10b981" strokeWidth={4} dot={{ r: 6, fill: '#10b981' }} />
+                <Tooltip content={<CustomTooltip />} />
+                <Line
+                  type="monotone"
+                  dataKey="peso"
+                  stroke="#10b981"
+                  strokeWidth={4}
+                  dot={{ r: 6, fill: '#10b981', strokeWidth: 2, stroke: '#fff' }}
+                  activeDot={{ r: 8, strokeWidth: 0 }}
+                />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -93,9 +131,11 @@ const Evolution: React.FC<Props> = ({ alunoId, weights }) => {
               const exData = loads
                 .filter(l => l.exerciseName === exName)
                 .map(l => ({
+                  timestamp: new Date(l.created_at).getTime(),
                   data: new Date(l.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
                   carga: l.carga
-                }));
+                }))
+                .sort((a, b) => a.timestamp - b.timestamp);
 
               return (
                 <div key={exName} className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100">
@@ -103,10 +143,23 @@ const Evolution: React.FC<Props> = ({ alunoId, weights }) => {
                   <div className="h-[180px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={exData}>
-                        <XAxis dataKey="data" hide />
+                        <XAxis
+                          dataKey="timestamp"
+                          axisLine={false}
+                          tickLine={false}
+                          tickFormatter={formatDate}
+                          style={{ fontSize: '9px', fontWeight: 'bold', fill: '#94a3b8' }}
+                        />
                         <YAxis hide domain={['dataMin - 5', 'dataMax + 5']} />
-                        <Tooltip />
-                        <Line type="stepAfter" dataKey="carga" stroke="#3b82f6" strokeWidth={3} dot={false} />
+                        <Tooltip content={<CustomTooltip />} />
+                        <Line
+                          type="stepAfter"
+                          dataKey="carga"
+                          stroke="#3b82f6"
+                          strokeWidth={3}
+                          dot={{ r: 4, fill: '#3b82f6', strokeWidth: 2, stroke: '#fff' }}
+                          activeDot={{ r: 6, strokeWidth: 0 }}
+                        />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>

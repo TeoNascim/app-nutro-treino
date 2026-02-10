@@ -26,7 +26,7 @@ const UserManagement: React.FC<Props> = ({ profissionalId, selectedAlunoId, onSe
     try {
       const { data, error } = await supabase
         .from('alunos')
-        .select('aluno_id, users_profile (*)')
+        .select('aluno_id, users_profile!aluno_id (*)')
         .eq('profissional_id', profissionalId);
 
       if (error) throw error;
@@ -52,10 +52,16 @@ const UserManagement: React.FC<Props> = ({ profissionalId, selectedAlunoId, onSe
         .eq('role', 'aluno')
         .single();
 
-      if (profileError || !profile) {
-        if (profileError && profileError.code !== 'PGRST116') {
-          console.error("Erro ao buscar aluno:", profileError);
-        }
+      if (profileError) {
+        console.error("Erro ao buscar aluno:", profileError);
+        alert(profileError.message.includes('fetch')
+          ? "Erro de conexão: Verifique seu CORS no Supabase ou tente recarregar."
+          : "Erro ao buscar aluno: " + profileError.message);
+        setLinking(false);
+        return;
+      }
+
+      if (!profile) {
         alert("Aluno não encontrado ou não possui perfil de aluno.");
         setLinking(false);
         return;

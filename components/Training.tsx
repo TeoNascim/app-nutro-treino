@@ -21,7 +21,7 @@ interface Props {
 
 const DAYS = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
 
-const Training: React.FC<Props> = ({ alunoId, isPro, isWorkoutActive, setIsWorkoutActive }) => {
+const Training: React.FC<Props> = ({ userProfile, alunoId, isPro, isWorkoutActive, setIsWorkoutActive }) => {
   const [selectedDayIdx, setSelectedDayIdx] = useState(0);
   const [plans, setPlans] = useState<WorkoutPlan[]>([]);
   const [exercises, setExercises] = useState<Exercise[]>([]);
@@ -63,14 +63,64 @@ const Training: React.FC<Props> = ({ alunoId, isPro, isWorkoutActive, setIsWorko
     }
   };
 
-  const handleAddExercise = async (planId: string) => {
-    if (!isPro) return;
+  const handleUpdatePlan = async (tipo_treino: string) => {
+    if (!isPro || !alunoId || !tipo_treino) return;
     try {
+      if (currentPlan) {
+        const { error } = await supabase
+          .from('planos_treino')
+          .update({ tipo_treino })
+          .eq('id', currentPlan.id);
+        if (error) throw error;
+        setPlans(plans.map(p => p.id === currentPlan.id ? { ...p, tipo_treino } : p));
+      } else {
+        const { data, error } = await supabase
+          .from('planos_treino')
+          .insert([{
+            aluno_id: alunoId,
+            profissional_id: userProfile.id,
+            dia_semana: currentDay,
+            tipo_treino
+          }])
+          .select();
+        if (error) throw error;
+        if (data) setPlans([...plans, data[0]]);
+      }
+    } catch (err: any) {
+      alert("Erro ao salvar plano: " + err.message);
+    }
+  };
+
+  const handleAddExercise = async () => {
+    if (!isPro || !alunoId) return;
+
+    let planId = currentPlan?.id;
+
+    try {
+      // If no plan for current day, create one first
+      if (!planId) {
+        const { data: newPlan, error: planError } = await supabase
+          .from('planos_treino')
+          .insert([{
+            aluno_id: alunoId,
+            profissional_id: userProfile.id,
+            dia_semana: currentDay,
+            tipo_treino: `Treino de ${currentDay}`
+          }])
+          .select();
+
+        if (planError) throw planError;
+        if (newPlan) {
+          setPlans([...plans, newPlan[0]]);
+          planId = newPlan[0].id;
+        }
+      }
+
       const { data, error } = await supabase.from('exercicios').insert([{
         plano_treino_id: planId,
         nome: 'Novo Exercício',
         series: 3,
-        repeticoes: 12
+        repeticoes: '12'
       }]).select();
 
       if (error) throw error;
@@ -134,9 +184,19 @@ const Training: React.FC<Props> = ({ alunoId, isPro, isWorkoutActive, setIsWorko
         </button>
         <div className="text-center flex-1 mx-4">
           <h2 className="text-xl font-black text-slate-900">{currentDay}</h2>
-          <p className="text-xs text-emerald-600 font-bold uppercase tracking-widest">
-            {currentPlan?.tipo_treino || 'Sem treino'}
-          </p>
+          {isPro ? (
+            <input
+              className="text-xs text-emerald-600 font-bold uppercase tracking-widest text-center bg-transparent border-none focus:ring-0 w-full"
+              placeholder="Definir treino (ex: Peito e Tríceps)"
+              defaultValue={currentPlan?.tipo_treino || ''}
+              onKeyDown={e => e.key === 'Enter' && handleUpdatePlan((e.target as HTMLInputElement).value)}
+              onBlur={e => handleUpdatePlan(e.target.value)}
+            />
+          ) : (
+            <p className="text-xs text-emerald-600 font-bold uppercase tracking-widest">
+              {currentPlan?.tipo_treino || 'Sem treino'}
+            </p>
+          )}
         </div>
         <button onClick={() => setSelectedDayIdx(prev => (prev < 6 ? prev + 1 : 0))} className="p-2 text-slate-400 hover:text-emerald-500 transition-colors">
           <ChevronRight size={28} />
@@ -208,8 +268,8 @@ const Training: React.FC<Props> = ({ alunoId, isPro, isWorkoutActive, setIsWorko
           ))
         )}
 
-        {isPro && currentPlan && (
-          <button onClick={() => handleAddExercise(currentPlan.id)} className="w-full py-6 border-2 border-dashed border-emerald-200 rounded-[2.5rem] text-emerald-600 font-black flex items-center justify-center gap-3 hover:bg-emerald-50 transition-all active:scale-95">
+        {isPro && (
+          <button onClick={handleAddExercise} className="w-full py-6 border-2 border-dashed border-emerald-200 rounded-[2.5rem] text-emerald-600 font-black flex items-center justify-center gap-3 hover:bg-emerald-50 transition-all active:scale-95">
             <Plus size={20} /> ADICIONAR EXERCÍCIO
           </button>
         )}

@@ -11,7 +11,8 @@ import {
   TrendingUp,
   LogOut,
   Users as UsersIcon,
-  Printer
+  Printer,
+  FileText
 } from 'lucide-react';
 import { supabase } from './lib/supabase';
 import {
@@ -28,12 +29,14 @@ import Diet from './components/Diet';
 import Evolution from './components/Evolution';
 import Auth from './components/Auth';
 import UserManagement from './components/UserManagement';
+import ReportView from './components/ReportView';
 
 const App: React.FC = () => {
   const [session, setSession] = useState<any>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
   const [selectedAlunoId, setSelectedAlunoId] = useState<string | null>(null);
+  const [selectedAlunoProfile, setSelectedAlunoProfile] = useState<UserProfile | null>(null);
   const [isWorkoutActive, setIsWorkoutActive] = useState(false);
   const [weights, setWeights] = useState<WeightEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,6 +65,32 @@ const App: React.FC = () => {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (selectedAlunoId) {
+      fetchSelectedAlunoData(selectedAlunoId);
+    } else {
+      setSelectedAlunoProfile(null);
+      if (userProfile?.role === 'aluno') {
+        fetchWeights(userProfile.id);
+      } else {
+        setWeights([]);
+      }
+    }
+  }, [selectedAlunoId, userProfile?.id]);
+
+  const fetchSelectedAlunoData = async (alunoId: string) => {
+    const { data: profile } = await supabase
+      .from('users_profile')
+      .select('*')
+      .eq('id', alunoId)
+      .single();
+
+    if (profile) {
+      setSelectedAlunoProfile(profile);
+      fetchWeights(alunoId);
+    }
+  };
 
   const fetchProfile = async (userId: string) => {
     try {
@@ -175,11 +204,26 @@ const App: React.FC = () => {
           <SidebarItem active={activeTab === 'training'} onClick={() => setActiveTab('training')} icon={<Dumbbell />} label="Treinamento" badge={isWorkoutActive} />
           <SidebarItem active={activeTab === 'diet'} onClick={() => setActiveTab('diet')} icon={<Utensils />} label="Alimentação" />
           <SidebarItem active={activeTab === 'evolution'} onClick={() => setActiveTab('evolution')} icon={<TrendingUp />} label="Evolução" />
+          {isPro && selectedAlunoId && (
+            <SidebarItem active={activeTab === 'print'} onClick={() => setActiveTab('print')} icon={<FileText />} label="Relatório PDF" />
+          )}
         </nav>
 
         <div className="mt-auto border-t border-slate-800 pt-6">
+          {isPro && selectedAlunoProfile && (
+            <div className="px-3 mb-6 bg-emerald-500/5 p-4 rounded-2xl border border-emerald-500/10">
+              <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-1">Gerenciando</p>
+              <p className="text-sm font-black text-slate-100 truncate">{selectedAlunoProfile.nome}</p>
+              <button
+                onClick={() => setSelectedAlunoId(null)}
+                className="text-[10px] text-slate-400 hover:text-white underline mt-2 font-bold transition-colors"
+              >
+                Limpar seleção
+              </button>
+            </div>
+          )}
           <div className="px-3 mb-4">
-            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Usuário</p>
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Seu Perfil</p>
             <p className="text-sm font-bold text-slate-200 truncate">{userProfile.nome}</p>
             <p className="text-[10px] text-slate-400 capitalize">{userProfile.role}</p>
           </div>
@@ -194,11 +238,13 @@ const App: React.FC = () => {
         <div className="max-w-5xl mx-auto">
           {activeTab === 'dashboard' && (
             <Dashboard
-              user={userProfile}
+              user={(isPro && selectedAlunoProfile) ? selectedAlunoProfile : userProfile}
               weights={weights}
               onTabChange={setActiveTab}
               setWeights={setWeights}
               isWorkoutActive={isWorkoutActive}
+              isPro={isPro}
+              loggedUserId={userProfile.id}
             />
           )}
           {activeTab === 'users' && isPro && (
@@ -228,6 +274,12 @@ const App: React.FC = () => {
               alunoId={effectiveAlunoId || ''}
               weights={weights}
               isPro={isPro}
+            />
+          )}
+          {activeTab === 'print' && isPro && selectedAlunoProfile && (
+            <ReportView
+              user={selectedAlunoProfile}
+              weights={weights}
             />
           )}
         </div>

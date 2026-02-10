@@ -11,14 +11,17 @@ CREATE TABLE IF NOT EXISTS public.users_profile (
     nome TEXT,
     email TEXT,
     role TEXT NOT NULL DEFAULT 'aluno' CHECK (role IN ('aluno', 'profissional')),
+    goal TEXT,
+    target_weight NUMERIC,
+    status TEXT DEFAULT 'Ativo' CHECK (status IN ('Ativo', 'Inativo', 'Férias')),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
 -- 2. Vínculo Profissional-Aluno
 CREATE TABLE IF NOT EXISTS public.alunos (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    aluno_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    profissional_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    aluno_id UUID NOT NULL REFERENCES public.users_profile(id) ON DELETE CASCADE,
+    profissional_id UUID NOT NULL REFERENCES public.users_profile(id) ON DELETE CASCADE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
     UNIQUE(aluno_id)
 );
@@ -31,32 +34,32 @@ CREATE TABLE IF NOT EXISTS public.registros_peso (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
--- 4. Exercícios
-CREATE TABLE IF NOT EXISTS public.exercicios (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    profissional_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    nome TEXT NOT NULL,
-    grupo TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
-);
-
--- 5. Registro de Carga
-CREATE TABLE IF NOT EXISTS public.registros_carga (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    exercicio_id UUID REFERENCES public.exercicios(id) ON DELETE SET NULL,
-    carga NUMERIC,
-    repeticoes INTEGER,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
-);
-
--- 6. Planos de Treino
+-- 4. Planos de Treino
 CREATE TABLE IF NOT EXISTS public.planos_treino (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     profissional_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     aluno_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    titulo TEXT,
-    descricao TEXT,
+    dia_semana TEXT NOT NULL, -- Segunda, Terça, etc.
+    tipo_treino TEXT, -- 'Peito e Tríceps', 'Descanso', etc.
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+-- 5. Exercícios (Vinculados a um Plano)
+CREATE TABLE IF NOT EXISTS public.exercicios (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    plano_treino_id UUID NOT NULL REFERENCES public.planos_treino(id) ON DELETE CASCADE,
+    nome TEXT NOT NULL,
+    series INTEGER DEFAULT 3,
+    repeticoes TEXT DEFAULT '12',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+-- 6. Registro de Carga
+CREATE TABLE IF NOT EXISTS public.registros_carga (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    exercicio_id UUID REFERENCES public.exercicios(id) ON DELETE CASCADE,
+    carga NUMERIC,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
@@ -64,9 +67,10 @@ CREATE TABLE IF NOT EXISTS public.planos_treino (
 CREATE TABLE IF NOT EXISTS public.meals (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     aluno_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    titulo TEXT NOT NULL,
+    tipo_refeicao TEXT NOT NULL, -- café, almoço, etc.
+    dia_semana TEXT NOT NULL,
+    horario TIME NOT NULL,
     descricao TEXT,
-    calorias INTEGER,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
